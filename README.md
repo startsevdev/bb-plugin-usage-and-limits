@@ -1,6 +1,6 @@
-# Where the limit goes
+# Usage & Limits
 
-A local BB sidebar widget for Codex. Use **Usage** for real subscription percentages, reset times and pace
+A BB sidebar widget for connected Codex and Claude Code accounts. Use **Usage** for real subscription percentages, reset times and pace
 forecasts, or **Threads** for the 5h / 7d usage breakdown. Click a thread to open it.
 Only windows returned by the provider appear in Usage (some plans have only 7d).
 Usage bars and percentage labels show the remaining limit (100% minus usage),
@@ -48,7 +48,7 @@ bb plugin build
 bb plugin reload where-the-limit-goes
 ```
 
-The widget opens directly on Codex, without a provider switch.
+One connected account opens directly. When both providers report usage, a selector switches the quota and thread views between them. The Codex card shows the number of banked manual resets returned by the local Codex app server for the matching account. An unavailable balance is displayed as unavailable. Claude Code thread shares use local input, output and cache tokens.
 
 GitHub Actions appears as a separate Usage block for `startsevdev`. It reads
 monthly compute spend from the billing usage summary and the allowance for Free/Pro through the locally authenticated
@@ -68,7 +68,7 @@ data; the forecast is an estimate and may change with workflow activity.
 ## Install in BB
 
 ~~~sh
-bb plugin install git:https://github.com/startsevdev/bb-plugin-where-the-limit-goes.git@v0.1.0
+bb plugin install git:https://github.com/startsevdev/bb-plugin-where-the-limit-goes.git@v0.1.2
 ~~~
 
 The public package uses the ID where-the-limit-goes because limits belongs to another plugin in BB Community. The original GitHub Actions block is specific to the author's account. Other users can use the Codex views with their own data.

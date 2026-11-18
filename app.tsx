@@ -1,4 +1,4 @@
-// bb-plugin-limits — sidebar footer card "Where the limit goes".
+// bb-plugin-limits — sidebar footer card "Usage & Limits".
 //
 // Mirrors BB's own Provider usage card: the same sidebar tokens, the same
 // four-column subgrid for bars, and colour only when a limit is running out.
@@ -99,17 +99,18 @@ function Bar({ usedPercent, timeRemainingPercent }: { usedPercent: number; timeR
   );
 }
 
-function useReport(window: WindowKey) {
+function useReport(window: WindowKey, provider: Report["provider"] | null) {
   const rpc = useRpc<typeof rpcContract>();
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const generation = useRef(0);
   const refetch = useCallback(() => {
+    if (!provider) return;
     const request = ++generation.current;
     setLoading(true);
     rpc
-      .call("limits_report", { window, provider: "codex" })
+      .call("limits_report", { window, provider })
       .then(
         (result) => {
           if (request !== generation.current) return;
@@ -119,7 +120,7 @@ function useReport(window: WindowKey) {
         (cause: unknown) => { if (request === generation.current) setError(cause instanceof Error ? cause.message : String(cause)); },
       )
       .finally(() => { if (request === generation.current) setLoading(false); });
-  }, [rpc, window]);
+  }, [rpc, window, provider]);
   useEffect(() => {
     setReport(null);
     setError(null);
@@ -207,9 +208,25 @@ function LimitsCard({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
   const [tab, setTab] = useState<Tab>("usage");
   // The window threads are ranked over; Usage shows both windows either way.
   const [window, setWindow] = useState<WindowKey>("5h");
-  const { report, error, loading, refetch } = useReport(window);
-  const providerLabel = "Codex";
-  const vendor = "OpenAI";
+  const rpc = useRpc<typeof rpcContract>();
+  const [available, setAvailable] = useState<Report["provider"][] | null>(null);
+  const [discoveryError, setDiscoveryError] = useState(false);
+  const [choice, setChoice] = useState<Report["provider"]>("codex");
+  useEffect(() => {
+    let live = true;
+    const check = () => rpc.call("connected_providers", {}).then(
+      accounts => { if (live) { setAvailable(accounts); setDiscoveryError(false); } },
+      () => { if (live) setDiscoveryError(true); }
+    );
+    void check();
+    const timer = setInterval(check, REFRESH_MS);
+    return () => { live = false; clearInterval(timer); };
+  }, [rpc]);
+  const provider = available?.includes(choice) ? choice : available?.[0] ?? null;
+  const { report: data, error, loading, refetch } = useReport(window, provider);
+  const report = data?.provider === provider ? data : null;
+  const providerLabel = provider === "claude-code" ? "Claude Code" : "Codex";
+  const vendor = provider === "claude-code" ? "Anthropic" : "OpenAI";
   const navigate = useBbNavigate();
 
   return (
@@ -229,6 +246,10 @@ function LimitsCard({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
             </button>
           ))}
         </div>
+        {available && available.length > 1 && <select aria-label="Usage provider" value={provider ?? ""} className="min-w-0 bg-transparent text-xs"
+          onChange={e => setChoice(e.target.value === "claude-code" ? "claude-code" : "codex")}>
+          <option value="codex">Codex</option><option value="claude-code">Claude Code</option>
+        </select>}
         <span className="flex-1" />
         <button
           type="button"
@@ -260,7 +281,7 @@ function LimitsCard({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
       <div className="min-h-0 overflow-y-auto p-2.5">
         {report === null ? (
           <p className="text-2xs text-subtle-foreground">
-            {error === null ? "Calculating usage…" : `Couldn't calculate: ${error}`}
+            {discoveryError && !provider ? "Provider usage unavailable" : available?.length === 0 ? "No connected usage providers" : error === null ? "Calculating usage…" : `Couldn't calculate: ${error}`}
           </p>
         ) : tab === "threads" ? (
           <section>
@@ -335,6 +356,9 @@ function LimitsCard({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
                 </span>
               )}
             </div>
+            {provider === "codex" && <p className="col-span-full text-2xs text-subtle-foreground">
+              Manual resets available · {report.manualResets ?? "Unavailable"}
+            </p>}
             {report.windows.length === 0 ? (
               <p className="col-span-full text-2xs leading-snug text-subtle-foreground">
                 Limit percentages are temporarily unavailable from {vendor}
@@ -386,7 +410,7 @@ export default definePluginApp((app) => {
   app.experimental_sidebarFooter.register({
     kind: "disclosure",
     id: "limits",
-    label: "Where the limit goes",
+    label: "Usage & Limits",
     icon: "where-the-limit-goes/gauge",
     component: LimitsCard,
   });

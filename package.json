@@ -1,14 +1,14 @@
 {
   "name": "bb-plugin-where-the-limit-goes",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "type": "module",
   "engines": {
     "bb": ">=0.45",
     "bbPluginSdk": ">=0.6.15"
   },
   "bb": {
-    "name": "Where the limit goes",
-    "description": "Shows Codex limits and usage shares, plus remaining GitHub Actions compute.",
+    "name": "Usage & Limits",
+    "description": "Shows connected provider quotas, Codex manual resets, thread usage and GitHub Actions compute.",
     "branding": {
       "icon": "./icons/gauge.svg",
       "experimental_icons": {

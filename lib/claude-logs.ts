@@ -1,5 +1,5 @@
 // Reads Claude Code session logs (~/.claude/projects/**/*.jsonl) and turns
-// every assistant message into a cost-weighted usage record. Files are read
+// every assistant message into a token-weighted usage record. Files are read
 // incrementally: each scan only parses bytes appended since the last one.
 import { createReadStream } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
@@ -19,22 +19,6 @@ export interface UsageRecord {
   cost: number;
 }
 
-// API prices per million tokens: [input, output, cache read].
-// Cache writes are input × 1.25 (5 min) or × 2 (1 hour).
-const PRICES: Array<[RegExp, [number, number, number]]> = [
-  [/fable|mythos/, [10, 50, 0.25]],
-  [/opus-5-5/, [4, 20, 0.2]],
-  [/opus/, [5, 25, 0.5]],
-  [/sonnet-5/, [2, 10, 0.2]],
-  [/sonnet/, [3, 15, 0.3]],
-  [/haiku-5/, [0.1, 0.5, 0.01]],
-  [/haiku/, [1, 5, 0.1]],
-];
-
-function priceFor(model: string): [number, number, number] {
-  return PRICES.find(([re]) => re.test(model))?.[1] ?? [4, 20, 0.2];
-}
-
 interface RawUsage {
   input_tokens?: number;
   output_tokens?: number;
@@ -46,21 +30,6 @@ interface RawUsage {
   };
 }
 
-export function costOf(model: string, usage: RawUsage): number {
-  const [input, output, cacheRead] = priceFor(model);
-  const write1h = usage.cache_creation?.ephemeral_1h_input_tokens ?? 0;
-  const write5m =
-    usage.cache_creation?.ephemeral_5m_input_tokens ??
-    Math.max(0, (usage.cache_creation_input_tokens ?? 0) - write1h);
-  const tokens =
-    (usage.input_tokens ?? 0) * input +
-    write5m * input * 1.25 +
-    write1h * input * 2 +
-    (usage.cache_read_input_tokens ?? 0) * cacheRead +
-    (usage.output_tokens ?? 0) * output;
-  return tokens / 1_000_000;
-}
-
 interface FileState {
   size: number;
   offset: number;
@@ -69,7 +38,8 @@ interface FileState {
 }
 
 export class ClaudeLogIndex {
-  private readonly root = join(homedir(), ".claude", "projects");
+  private readonly root: string;
+  constructor(root = join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "projects")) { this.root = root; }
   private readonly files = new Map<string, FileState>();
 
   /** Scans logs touched since `since` and returns every record newer than it. */
@@ -188,12 +158,14 @@ export class ClaudeLogIndex {
       ...source,
       model,
       at,
-      cost: costOf(model, message.usage),
+      cost: (message.usage.input_tokens ?? 0) + (message.usage.output_tokens ?? 0)
+        + (message.usage.cache_read_input_tokens ?? 0) + (message.usage.cache_creation_input_tokens ??
+          ((message.usage.cache_creation?.ephemeral_5m_input_tokens ?? 0) + (message.usage.cache_creation?.ephemeral_1h_input_tokens ?? 0))),
     });
   }
 }
 
-/** "-Users-me-Projects-tender-ru" → "tender-ru". */
+/** "-Users-me-Projects-example" → "example". */
 function projectName(folder: string): string {
   const marker = "-Projects-";
   const index = folder.lastIndexOf(marker);

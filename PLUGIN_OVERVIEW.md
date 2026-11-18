@@ -1,10 +1,10 @@
-See where your Codex usage goes, which threads use the most,
+See where your thread usage goes, which threads use the most,
 and when a limit may run out at the current pace.
 
 ## What you get
 
-- A Gauge button in the sidebar footer showing Codex directly.
-- Usage: remaining Codex limit percentages, reset times and forecasts.
+- A Gauge button in the sidebar footer for connected Codex and Claude Code accounts.
+- Usage: remaining quota, countdowns and forecasts, plus the Codex manual reset balance.
 - GitHub Actions: remaining included monthly compute, reset countdown and a pace forecast through local GitHub CLI billing access.
 - Threads: 5h and 7d rankings with thread type, model and subagent count.
   Click a row to open its thread.
@@ -12,7 +12,7 @@ and when a limit may run out at the current pace.
 
 ## How it works
 
-Limit percentages come from BB's Codex usage. Thread shares use tokens,
+Limit percentages come from BB's provider usage. Thread shares use tokens,
 including cached input, and are labelled accordingly: they are not charges
 or exact shares of the subscription limit. Forecasts are estimates. Everything
 is read locally; nothing is uploaded. ChatGPT web conversations are not included.
