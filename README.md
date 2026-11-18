@@ -27,7 +27,7 @@ Open **Usage & Limits** at the bottom of the sidebar. One connected provider ope
 
 ![The Threads tab ranks example conversations by local token share over a five-hour window.](assets/threads.png)
 
-Pick **5h** or **7d**. The list ranks threads by their share of observed tokens and identifies manual work, routines and child threads. Open a linked row to go straight to that conversation in BB. A high share tells you where local token use went. Subscription quota is measured separately by the provider.
+Pick **5h** or **7d**. The list ranks threads by their share of observed tokens and identifies manual work, routines and child threads. Repeated runs of the same routine roll up into one row, so a nightly job is easy to spot even when no single run was large. Rows show the model and subagent count when available. Open a routine to inspect its latest run, or open a linked thread directly. A high share tells you where local token use went. Subscription quota is measured separately by the provider.
 
 ## Where the numbers come from
 
