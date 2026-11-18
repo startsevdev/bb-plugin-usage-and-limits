@@ -390,7 +390,7 @@ function LimitsCard({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
               </div>
             ))}
             {provider === "codex" && <p className="col-span-full text-2xs text-subtle-foreground">
-              Manual resets available · {report.manualResets ?? "Unavailable"}
+              Manual resets available · {report.manualResets === null ? "Unavailable" : <span className="tabular-nums text-sidebar-foreground">{report.manualResets}</span>}
             </p>}
             {report.limitsCheckedAt !== null &&
             report.generatedAt - report.limitsCheckedAt > STALE_MS ? (
