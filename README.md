@@ -1,17 +1,42 @@
 # Usage & Limits
 
-A BB sidebar widget for connected Codex and Claude Code accounts. Use **Usage** for real subscription percentages, reset times and pace
-forecasts, or **Threads** for the 5h / 7d usage breakdown. Click a thread to open it.
-Only windows returned by the provider appear in Usage (some plans have only 7d).
-Usage bars and percentage labels show the remaining limit (100% minus usage),
-without an added label. Warning colours still indicate a nearly exhausted limit.
+![Usage & Limits in BB. The Usage tab shows remaining quota, a pace forecast, a manual reset balance and GitHub Actions compute. Figures are examples.](assets/cover.png)
 
-Codex shares
-use input + output tokens, including cached input, from `$CODEX_HOME/sessions`
-(default `~/.codex/sessions`). These token shares are not subscription charges
-or exact shares of the OpenAI limit. Forecasts are estimates at the observed pace.
-Local uncompressed JSONL logs are indexed incrementally; archived compressed
-logs and ChatGPT web conversations are not included. Nothing is uploaded.
+Before starting a long run, open **Usage** in the BB sidebar. See how much quota you have left and whether it will last until the window resets. If it is going faster than expected, switch to **Threads** to find the work behind it.
+
+## Install
+
+```sh
+bb plugin install git:https://github.com/startsevdev/bb-plugin-usage-and-limits.git@v0.1.4
+```
+
+Open **Usage & Limits** at the bottom of the sidebar. One connected provider opens directly. When both Codex and Claude Code report usage to BB, the selector beside **Usage** and **Threads** switches between them.
+
+## Read your next run at a glance
+
+| In the Usage tab | What it tells you |
+| --- | --- |
+| Remaining bar | The percentage of your provider allowance still available. Each reported five-hour or weekly window has its own row. |
+| Pace marker | How much of the window is left in time. When the fill extends past the marker, more quota remains than time. |
+| Forecast | Whether your recent pace will carry you to the reset. A weekly estimate needs enough observed history. |
+| Manual resets available | The number of banked resets reported by Codex for the matching account. A missing balance reads **Unavailable**. |
+
+**GitHub Actions** has a separate monthly compute row. In this release, that integration is tied to the author’s GitHub account and requires its authenticated GitHub CLI. The Codex and Claude Code views use your own provider data.
+
+## Find the thread behind the spike
+
+![The Threads tab ranks example conversations by local token share over a five-hour window.](assets/threads.png)
+
+Pick **5h** or **7d**. The list ranks threads by their share of observed tokens and identifies manual work, routines and child threads. Open a linked row to go straight to that conversation in BB. A high share tells you where local token use went. Subscription quota is measured separately by the provider.
+
+## Where the numbers come from
+
+- **Quota** comes from BB’s provider usage API. The plug-in reads the Codex manual reset balance through the local Codex app server. Claude Code’s connector supplies quota windows but does not expose a manual reset count.
+- **Thread shares** come from local Codex session logs and Claude Code project logs, including input, output and cache tokens. Activity on other machines and ChatGPT web conversations can fall outside that view.
+- **Freshness** is checked on a five-minute cache. After an unsuccessful quota check, the card can show the last confirmed percentage with its observation time.
+
+<details>
+<summary>Forecast calculations, data coverage and CLI commands</summary>
 
 Weekly forecasts use real quota usage over the rolling last 7 days,
 including nights, idle time and usage before the latest weekly reset.
@@ -48,27 +73,4 @@ bb plugin build
 bb plugin reload where-the-limit-goes
 ```
 
-One connected account opens directly. When both providers report usage, a selector switches the quota and thread views between them. The Codex card shows the number of banked manual resets returned by the local Codex app server for the matching account. An unavailable balance is displayed as unavailable. Claude Code thread shares use local input, output and cache tokens.
-
-GitHub Actions appears as a separate Usage block for `startsevdev`. It reads
-monthly compute spend from the billing usage summary and the allowance for Free/Pro through the locally authenticated
-GitHub CLI (`gh`, personal billing requires the `user` scope). Results are cached
-for five minutes; unavailable or unsupported billing responses show no percentage.
-Credentials stay in the existing gh credential store. The GitHub block is
-independent of Codex and does not change the Threads breakdown.
-
-The Actions row uses the same bar / remaining percentage / reset countdown layout
-as Codex. Monthly compute resets on the first day of the next month at 00:00 UTC;
-the account login is not displayed.
-
-Actions shows a pace forecast instead of dollar amounts, using average compute
-usage since the start of the UTC billing month. The first hour has insufficient
-data; the forecast is an estimate and may change with workflow activity.
-
-## Install in BB
-
-~~~sh
-bb plugin install git:https://github.com/startsevdev/bb-plugin-usage-and-limits.git@v0.1.4
-~~~
-
-The public package uses the ID where-the-limit-goes because limits belongs to another plugin in BB Community. The original GitHub Actions block is specific to the author's account. Other users can use the Codex views with their own data.
+</details>
