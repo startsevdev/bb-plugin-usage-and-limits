@@ -1,10 +1,8 @@
 # Usage & Limits
 
-![Usage & Limits in BB. The Usage tab shows remaining quota, a pace forecast, a manual reset balance and GitHub Actions compute. Figures are examples.](assets/cover.gif)
+![Usage & Limits in BB. The Usage tab shows remaining quota, a pace forecast, a manual reset balance and GitHub Actions compute. Figures are examples.](assets/cover.png)
 
 Before starting a long run, open **Usage** in the BB sidebar. See how much quota you have left and whether it will last until the window resets. If it is going faster than expected, switch to **Threads** to find the work behind it.
-
-In the demo, the weekly allowance falls from 74% to 68%. Switching to Threads reveals that release review accounts for 48% of locally observed tokens.
 
 ## Install
 
@@ -14,7 +12,7 @@ bb plugin install git:https://github.com/startsevdev/bb-plugin-usage-and-limits.
 
 Open **Usage & Limits** at the bottom of the sidebar. One connected provider opens directly. When both Codex and Claude Code report usage to BB, the selector beside **Usage** and **Threads** switches between them.
 
-![Switch between connected providers](assets/providers.gif)
+![Switch between connected providers](assets/providers.png)
 
 ## Read your next run at a glance
 
@@ -25,21 +23,21 @@ Open **Usage & Limits** at the bottom of the sidebar. One connected provider ope
 | Forecast | Whether your recent pace will carry you to the reset. A weekly estimate needs enough observed history. |
 | Manual resets available | The number of banked resets reported by Codex for the matching account. A missing balance reads **Unavailable**. |
 
-![Compare remaining quota with time left](assets/pace.gif)
+![Compare remaining quota with time left](assets/pace.png)
 
-![Read the Codex manual reset balance](assets/banked.gif)
+![Read the Codex manual reset balance](assets/banked.png)
 
 **GitHub Actions** has a separate monthly compute row. In this release, that integration is tied to the author’s GitHub account and requires its authenticated GitHub CLI. The Codex and Claude Code views use your own provider data.
 
-![Check monthly GitHub Actions compute](assets/actions.gif)
+![Check monthly GitHub Actions compute](assets/actions.png)
 
 ## Find the thread behind the spike
 
-![The Threads tab ranks example conversations by local token share over a five-hour window.](assets/threads.gif)
+![The Threads tab ranks example conversations by local token share over a five-hour window.](assets/threads.png)
 
 Pick **5h** or **7d**. The list ranks threads by their share of observed tokens and identifies manual work, routines and child threads. Repeated runs of the same routine roll up into one row, so a nightly job is easy to spot even when no single run was large. Rows show the model and subagent count when available. Open a routine to inspect its latest run, or open a linked thread directly. A high share tells you where local token use went. Subscription quota is measured separately by the provider.
 
-![See recurring runs together](assets/routines.gif)
+![See recurring runs together](assets/routines.png)
 
 ## Where the numbers come from
 
