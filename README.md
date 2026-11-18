@@ -1,12 +1,12 @@
-# Usage & Limits
+# Where the limit goes
 
-Track remaining quota, next resets and thread usage for Codex and Claude Code in the BB sidebar. Use **Usage** for provider-reported subscription percentages, reset times and pace
+A local BB sidebar widget for Codex. Use **Usage** for real subscription percentages, reset times and pace
 forecasts, or **Threads** for the 5h / 7d usage breakdown. Click a thread to open it.
 Only windows returned by the provider appear in Usage (some plans have only 7d).
 Usage bars and percentage labels show the remaining limit (100% minus usage),
-with a visible next reset date, local time and countdown. Warning colours still indicate a nearly exhausted limit.
+without an added label. Warning colours still indicate a nearly exhausted limit.
 
-Codex thread shares
+Codex shares
 use input + output tokens, including cached input, from `$CODEX_HOME/sessions`
 (default `~/.codex/sessions`). These token shares are not subscription charges
 or exact shares of the OpenAI limit. Forecasts are estimates at the observed pace.
@@ -48,7 +48,7 @@ bb plugin build
 bb plugin reload where-the-limit-goes
 ```
 
-The widget selects the registered provider on single-provider installations. When both are registered, use the provider selector. Claude Code thread shares use input, output and cache tokens from local Claude Code project logs. Forecast availability depends on recorded history. A count of manual reset credits is unavailable in the BB usage response.
+The widget opens directly on Codex, without a provider switch.
 
 GitHub Actions appears as a separate Usage block for `startsevdev`. It reads
 monthly compute spend from the billing usage summary and the allowance for Free/Pro through the locally authenticated
@@ -68,7 +68,7 @@ data; the forecast is an estimate and may change with workflow activity.
 ## Install in BB
 
 ~~~sh
-bb plugin install git:https://github.com/startsevdev/bb-plugin-where-the-limit-goes.git@v0.1.1
+bb plugin install git:https://github.com/startsevdev/bb-plugin-where-the-limit-goes.git@v0.1.0
 ~~~
 
 The public package uses the ID where-the-limit-goes because limits belongs to another plugin in BB Community. The original GitHub Actions block is specific to the author's account. Other users can use the Codex views with their own data.

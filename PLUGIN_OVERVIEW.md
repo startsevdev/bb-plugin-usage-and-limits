@@ -1,14 +1,14 @@
-See where your provider usage goes, which threads use the most,
+See where your Codex usage goes, which threads use the most,
 and when a limit may run out at the current pace.
 
 ## What you get
 
-- A Gauge button in the sidebar footer for Codex and Claude Code.
-- Usage: remaining provider limit percentages, reset times and forecasts.
+- A Gauge button in the sidebar footer showing Codex directly.
+- Usage: remaining Codex limit percentages, reset times and forecasts.
 - GitHub Actions: remaining included monthly compute, reset countdown and a pace forecast through local GitHub CLI billing access.
 - Threads: 5h and 7d rankings with thread type, model and subagent count.
   Click a row to open its thread.
-- The same reports through `bb where-the-limit-goes report` for each provider.
+- The same reports through `bb where-the-limit-goes report` for Codex.
 
 ## How it works
 

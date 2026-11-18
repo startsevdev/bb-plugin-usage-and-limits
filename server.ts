@@ -1,16 +1,16 @@
-// bb-plugin-limits — "Usage & Limits".
+// bb-plugin-limits — "Where the limit goes".
 //
 // Combines real Codex subscription windows with local session logs.
 // Thread shares use observed tokens.
 import { defineRpcContract, type BbPluginApi } from "@get-bb/plugin-sdk";
 import { z } from "zod";
-import { ClaudeLogIndex, type UsageRecord } from "./lib/claude-logs";
+import type { UsageRecord } from "./lib/claude-logs";
 import { CodexLogIndex } from "./lib/codex-logs";
 import { actionsReportSchema, createActionsReader } from "./lib/github-actions";
 import { humanizeCron, modelLabel, count } from "./lib/format";
 import { forecastLimit, WINDOW_MS, PACE, type Snapshot } from "./lib/forecast";
 
-const providerKey = z.enum(["codex", "claude-code"]);
+const providerKey = z.enum(["codex"]);
 export type ProviderKey = z.infer<typeof providerKey>;
 const windowKey = z.enum(["5h", "7d"]);
 export type WindowKey = z.infer<typeof windowKey>;
@@ -106,8 +106,8 @@ const snapshotStoreSchema = z.object({
 });
 
 function createProviderReports(bb: BbPluginApi, provider: ProviderKey) {
-  const label = provider === "claude-code" ? "Claude Code" : "Codex";
-  const logs = provider === "claude-code" ? new ClaudeLogIndex() : new CodexLogIndex();
+  const label = "Codex";
+  const logs = new CodexLogIndex();
   const threads = new Map<string, ThreadInfo>();
   /** Codex session id → BB thread id. */
   const sessionOwner = new Map<string, string>();
@@ -148,11 +148,11 @@ function createProviderReports(bb: BbPluginApi, provider: ProviderKey) {
     }
     limitsCache = { plan: account.planLabel, windows, at: Date.now() };
     // Survives plugin reloads, so a refused check right after one still has data.
-    await bb.storage.kv.set(`limits:${provider}`, limitsCache);
+    await bb.storage.kv.set("limits:codex", limitsCache);
   }
 
   async function readLimits() {
-    limitsCache ??= (await bb.storage.kv.get<NonNullable<typeof limitsCache>>(`limits:${provider}`)) ?? null;
+    limitsCache ??= (await bb.storage.kv.get<NonNullable<typeof limitsCache>>("limits:codex")) ?? null;
     const fresh = limitsCache !== null && Date.now() - limitsCache.at < LIMITS_TTL;
     if (!fresh && Date.now() - limitsAttemptAt >= LIMITS_TTL) {
       limitsAttemptAt = Date.now();
@@ -165,14 +165,20 @@ function createProviderReports(bb: BbPluginApi, provider: ProviderKey) {
     if (limitsInFlight !== null) await limitsInFlight;
     if (limitsCache === null) return { plan: null, windows: [] as LimitWindow[], checkedAt: null };
     const now = Date.now();
-    const windows = limitsCache.windows.filter(w => w.resetsAt > now);
+    // A window that has reset since the last good check starts from zero.
+    const windows = limitsCache.windows.map((w) => {
+      if (w.resetsAt > now) return w;
+      const length = WINDOW_MS[w.key];
+      const periods = Math.ceil((now - w.resetsAt) / length) || 1;
+      return { ...w, usedPercent: 0, resetsAt: w.resetsAt + periods * length };
+    });
     return { plan: limitsCache.plan, windows, checkedAt: limitsCache.at };
   }
 
   function remember(windows: LimitWindow[], at: number | null, plan: string | null) {
     const work = snapshotWork.then(async () => {
       if (snapshotsPlan !== plan) {
-        const saved = snapshotStoreSchema.safeParse(await bb.storage.kv.get(`snapshots:${provider}`));
+        const saved = snapshotStoreSchema.safeParse(await bb.storage.kv.get("snapshots:codex"));
         snapshots["5h"] = saved.success && saved.data.plan === plan ? saved.data.windows["5h"] : [];
         snapshots["7d"] = saved.success && saved.data.plan === plan ? saved.data.windows["7d"] : [];
         snapshotsPlan = plan;
@@ -192,7 +198,7 @@ function createProviderReports(bb: BbPluginApi, provider: ProviderKey) {
         while (list.length > 1 && list[1]!.at < Date.now() - keep) list.shift();
         changed = true;
       }
-      if (changed) await bb.storage.kv.set(`snapshots:${provider}`, { plan, windows: snapshots });
+      if (changed) await bb.storage.kv.set("snapshots:codex", { plan, windows: snapshots });
     });
     snapshotWork = work.catch(cause => bb.log.warn(`snapshot history failed: ${String(cause)}`));
     return snapshotWork;
@@ -365,7 +371,7 @@ function createProviderReports(bb: BbPluginApi, provider: ProviderKey) {
       shareBasis: "tokens",
       plan: limits.plan,
       windows: limits.windows.map((w) => ({ ...w, forecast: forecastLimit(w,
-        w.key === "7d" && logs instanceof CodexLogIndex ? [...snapshots[w.key], ...logs.quotaHistory(w.key, limits.plan)] : snapshots[w.key], records) })),
+        w.key === "7d" ? [...snapshots[w.key], ...logs.quotaHistory(w.key, limits.plan)] : snapshots[w.key], records) })),
       byType,
       threads: shown.map((row) => {
         const model = [...row.models].sort((a, b) => b[1] - a[1])[0]?.[0];
@@ -404,7 +410,7 @@ function createProviderReports(bb: BbPluginApi, provider: ProviderKey) {
 
   // Snapshots of the real 5h percentage feed the forecast even while the
   // card is closed.
-  if (provider === "codex") bb.background.service(`limit-snapshots-${provider}`, {
+  bb.background.service(`limit-snapshots-${provider}`, {
     async start(signal) {
       while (!signal.aborted) {
         try {
@@ -435,7 +441,6 @@ export default async function plugin(bb: BbPluginApi) {
   const readActions = createActionsReader("startsevdev");
   const providers = {
     codex: createProviderReports(bb, "codex"),
-    "claude-code": createProviderReports(bb, "claude-code"),
   };
   bb.rpc.register(rpcContract, {
     github_actions: () => readActions(),
@@ -444,12 +449,12 @@ export default async function plugin(bb: BbPluginApi) {
 
   bb.cli.register({
     name: "where-the-limit-goes",
-    summary: "Show remaining quota, resets and thread usage",
+    summary: "Show where the Codex limit goes",
     commands: [
       {
         name: "report",
         summary: "Print the usage breakdown",
-        usage: "bb where-the-limit-goes report [5h|7d] [--provider codex|claude-code] [--all] [--json]",
+        usage: "bb where-the-limit-goes report [5h|7d] [--provider codex] [--all] [--json]",
       },
     ],
     async run(argv) {
@@ -457,12 +462,12 @@ export default async function plugin(bb: BbPluginApi) {
       const all = argv.includes("--all");
       const providerIndex = argv.indexOf("--provider");
       const selectedProvider = providerKey.safeParse(providerIndex < 0 ? "codex" : argv[providerIndex + 1]);
-      if (!selectedProvider.success) return { exitCode: 1, stderr: "Choose codex or claude-code" };
+      if (!selectedProvider.success) return { exitCode: 1, stderr: "Only Codex is supported" };
       const positional = argv.filter((arg, index) => !arg.startsWith("--") && (providerIndex < 0 || index !== providerIndex + 1));
       const [command, rawWindow] = positional;
       const { report, buildReport } = providers[selectedProvider.data];
       if (command !== "report") {
-        return { exitCode: command === undefined ? 0 : 1, stdout: "Usage: bb where-the-limit-goes report [5h|7d] [--provider codex|claude-code] [--all] [--json]" };
+        return { exitCode: command === undefined ? 0 : 1, stdout: "Usage: bb where-the-limit-goes report [5h|7d] [--provider codex] [--all] [--json]" };
       }
       const parsed = windowKey.safeParse(rawWindow ?? "5h");
       if (!parsed.success) return { exitCode: 1, stderr: "Window must be 5h or 7d" };

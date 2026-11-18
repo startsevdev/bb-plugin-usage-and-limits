@@ -1,10 +1,10 @@
-// bb-plugin-limits — sidebar footer card "Usage & Limits".
+// bb-plugin-limits — sidebar footer card "Where the limit goes".
 //
 // Mirrors BB's own Provider usage card: the same sidebar tokens, the same
 // four-column subgrid for bars, and colour only when a limit is running out.
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  definePluginApp, experimental_useProviders,
+  definePluginApp,
   useBbNavigate,
   useRpc,
   type ExperimentalSidebarFooterDisclosureProps,
@@ -42,16 +42,6 @@ function untilReset(resetsAt: number): string {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ${minutes % 60}m`;
   return `${Math.floor(hours / 24)}d ${hours % 24}h`;
-}
-
-function ResetTime({ at }: { at: number }) {
-  const date = new Date(at);
-  const local = date.toLocaleString(undefined, {
-    month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
-  });
-  return <p className="col-span-full text-2xs leading-snug text-sidebar-foreground">
-    Next reset <time dateTime={date.toISOString()}>{local}</time> · {untilReset(at)} left
-  </p>;
 }
 
 function forecastText(forecast: Report["windows"][number]["forecast"]) {
@@ -109,7 +99,7 @@ function Bar({ usedPercent, timeRemainingPercent }: { usedPercent: number; timeR
   );
 }
 
-function useReport(window: WindowKey, provider: Report["provider"]) {
+function useReport(window: WindowKey) {
   const rpc = useRpc<typeof rpcContract>();
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +109,7 @@ function useReport(window: WindowKey, provider: Report["provider"]) {
     const request = ++generation.current;
     setLoading(true);
     rpc
-      .call("limits_report", { window, provider })
+      .call("limits_report", { window, provider: "codex" })
       .then(
         (result) => {
           if (request !== generation.current) return;
@@ -129,7 +119,7 @@ function useReport(window: WindowKey, provider: Report["provider"]) {
         (cause: unknown) => { if (request === generation.current) setError(cause instanceof Error ? cause.message : String(cause)); },
       )
       .finally(() => { if (request === generation.current) setLoading(false); });
-  }, [rpc, window, provider]);
+  }, [rpc, window]);
   useEffect(() => {
     setReport(null);
     setError(null);
@@ -171,15 +161,19 @@ function ActionsUsage({ refreshKey }: { refreshKey: number }) {
         </p>
       ) : (
         <>
-          <div className="grid min-h-5 grid-cols-[max-content_minmax(0,1fr)_max-content] items-center gap-x-3 text-2xs">
+          <div className="grid min-h-5 grid-cols-[max-content_minmax(0,1fr)_max-content_max-content] items-center gap-x-3 text-2xs">
             <span className="whitespace-nowrap text-subtle-foreground">Monthly</span>
             <Bar usedPercent={used} timeRemainingPercent={timeRemainingPercent} />
             <span className={cn("whitespace-nowrap text-right tabular-nums", textTone(used))}>
-              {Math.round(100 - Math.max(0, Math.min(100, used)))}% left
+              {Math.round(100 - Math.max(0, Math.min(100, used)))}%
             </span>
-
+            <span
+              className="min-w-9 whitespace-nowrap text-right tabular-nums text-subtle-foreground"
+              title={report?.resetsAt == null ? undefined : `Resets ${new Date(report.resetsAt).toLocaleString()}`}
+            >
+              {report?.resetsAt == null ? "—" : untilReset(report.resetsAt)}
+            </span>
           </div>
-          {reset != null && <ResetTime at={reset} />}
           <p
             className="text-2xs leading-snug text-subtle-foreground"
             title="Estimated from average usage since the start of this month"
@@ -213,14 +207,9 @@ function LimitsCard({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
   const [tab, setTab] = useState<Tab>("usage");
   // The window threads are ranked over; Usage shows both windows either way.
   const [window, setWindow] = useState<WindowKey>("5h");
-  const { providers } = experimental_useProviders();
-  const available = providers.filter(p => p.id === "codex" || p.id === "claude-code");
-  const [selected, setSelected] = useState<Report["provider"]>("codex");
-  const provider = available.length === 1 && available[0]?.id === "claude-code" ? "claude-code" : selected;
-  const { report: response, error, loading, refetch } = useReport(window, provider);
-  const report = response?.provider === provider ? response : null;
-  const providerLabel = provider === "codex" ? "Codex" : "Claude Code";
-  const vendor = provider === "codex" ? "OpenAI" : "Anthropic";
+  const { report, error, loading, refetch } = useReport(window);
+  const providerLabel = "Codex";
+  const vendor = "OpenAI";
   const navigate = useBbNavigate();
 
   return (
@@ -240,10 +229,6 @@ function LimitsCard({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
             </button>
           ))}
         </div>
-        {available.length > 1 && <select aria-label="Usage provider" className="min-w-0 bg-transparent text-xs" value={provider}
-          onChange={e => setSelected(e.target.value === "claude-code" ? "claude-code" : "codex")}>
-          <option value="codex">Codex</option><option value="claude-code">Claude Code</option>
-        </select>}
         <span className="flex-1" />
         <button
           type="button"
@@ -341,7 +326,7 @@ function LimitsCard({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
             )}
           </section>
         ) : (
-          <section className="grid grid-cols-[max-content_minmax(0,1fr)_max-content] gap-x-3">
+          <section className="grid grid-cols-[max-content_minmax(0,1fr)_max-content_max-content] gap-x-3">
             <div className="col-span-full mb-1.5 flex min-w-0 items-center gap-1.5">
               <span className="min-w-0 flex-1 truncate text-xs text-sidebar-foreground">{providerLabel}</span>
               {report.plan === null ? null : (
@@ -367,11 +352,12 @@ function LimitsCard({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
                     timeRemainingPercent={Math.max(0, Math.min(100, (w.resetsAt - Date.now()) / WINDOW_MS[w.key] * 100))}
                   />
                   <span className={cn("whitespace-nowrap text-right tabular-nums", textTone(w.usedPercent))}>
-                    {Math.round(100 - Math.max(0, Math.min(100, w.usedPercent)))}% left
+                    {Math.round(100 - Math.max(0, Math.min(100, w.usedPercent)))}%
                   </span>
-
+                  <span className="min-w-9 whitespace-nowrap text-right tabular-nums text-subtle-foreground">
+                    {untilReset(w.resetsAt)}
+                  </span>
                 </div>
-                <ResetTime at={w.resetsAt} />
                 <p
                   className="col-span-full text-2xs leading-snug text-subtle-foreground"
                   title={w.key === "7d" ? "Estimated from actual quota usage over the last 7 days, including usage before scheduled or early resets" : undefined}
@@ -400,7 +386,7 @@ export default definePluginApp((app) => {
   app.experimental_sidebarFooter.register({
     kind: "disclosure",
     id: "limits",
-    label: "Usage & Limits",
+    label: "Where the limit goes",
     icon: "where-the-limit-goes/gauge",
     component: LimitsCard,
   });
