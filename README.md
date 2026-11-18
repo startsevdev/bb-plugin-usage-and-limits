@@ -68,7 +68,7 @@ data; the forecast is an estimate and may change with workflow activity.
 ## Install in BB
 
 ~~~sh
-bb plugin install git:https://github.com/startsevdev/bb-plugin-where-the-limit-goes.git@v0.1.4
+bb plugin install git:https://github.com/startsevdev/bb-plugin-usage-and-limits.git@v0.1.4
 ~~~
 
 The public package uses the ID where-the-limit-goes because limits belongs to another plugin in BB Community. The original GitHub Actions block is specific to the author's account. Other users can use the Codex views with their own data.
