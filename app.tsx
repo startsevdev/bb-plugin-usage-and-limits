@@ -356,9 +356,6 @@ function LimitsCard({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
                 </span>
               )}
             </div>
-            {provider === "codex" && <p className="col-span-full text-2xs text-subtle-foreground">
-              Manual resets available · {report.manualResets ?? "Unavailable"}
-            </p>}
             {report.windows.length === 0 ? (
               <p className="col-span-full text-2xs leading-snug text-subtle-foreground">
                 Limit percentages are temporarily unavailable from {vendor}
@@ -392,6 +389,9 @@ function LimitsCard({ dismiss }: ExperimentalSidebarFooterDisclosureProps) {
                 </p>
               </div>
             ))}
+            {provider === "codex" && <p className="col-span-full text-2xs text-subtle-foreground">
+              Manual resets available · {report.manualResets ?? "Unavailable"}
+            </p>}
             {report.limitsCheckedAt !== null &&
             report.generatedAt - report.limitsCheckedAt > STALE_MS ? (
               <p className="col-span-full mt-0.5 text-2xs leading-snug text-subtle-foreground/75">
